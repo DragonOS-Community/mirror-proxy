@@ -8,9 +8,25 @@ pub struct Config {
     pub download_rules: DownloadRules,
 }
 
+#[derive(Debug, Deserialize, PartialEq)]
+pub enum StorageBackend {
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "nginx")]
+    Nginx,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct StorageConfig {
+    pub backend: StorageBackend,
     pub local: Option<LocalStorageConfig>,
+    pub nginx: Option<NginxStorageConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NginxStorageConfig {
+    pub base_url: String,
+    pub public_url: String, // 用于对外返回的url
 }
 
 #[derive(Debug, Deserialize)]

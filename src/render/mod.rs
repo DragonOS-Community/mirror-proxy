@@ -1,6 +1,5 @@
 use std::time::SystemTime;
 
-use actix_web::HttpResponse;
 use askama::Template;
 
 use crate::storage::StorageEntry;
@@ -69,7 +68,7 @@ pub fn render_list(
         .into_iter()
         .map(|e| {
             let mut et: IndexDirEntry = e.into();
-            et.url = format!("{}/{}", base_path, et.name);
+            et.url = format!("{}/{}", base_path, et.url);
             et
         })
         .collect();

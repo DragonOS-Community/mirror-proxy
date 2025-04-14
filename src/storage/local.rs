@@ -85,11 +85,14 @@ impl StorageProvider for LocalStorageProvider {
         true
     }
 
-    async fn stream_file(&self, path_in_provider: &str) -> Option<NamedFile> {
-        let file_path = self.abs_path(path_in_provider).ok()?;
+    async fn stream_file(&self, path_in_provider: &str) -> anyhow::Result<Option<NamedFile>> {
+        let file_path = self.abs_path(path_in_provider)?;
         match NamedFile::open_async(file_path).await {
-            Ok(file) => Some(file),
-            Err(_) => None,
+            Ok(file) => Ok(Some(file)),
+            Err(e) => {
+                log::debug!("Failed to open file {}: {}", path_in_provider, e);
+                Ok(None)
+            }
         }
     }
 
@@ -101,31 +104,30 @@ impl StorageProvider for LocalStorageProvider {
         }
     }
 
-    async fn get_download_url(&self, _full_path: &str) -> Option<String> {
+    async fn get_download_url(&self, _full_path: &str) -> anyhow::Result<Option<String>> {
         // should not impl for local storage
-        None
+        Ok(None)
     }
 
-    async fn list_directory(&self, path_in_provider: &str) -> Option<Vec<super::StorageEntry>> {
+    async fn list_directory(
+        &self,
+        path_in_provider: &str,
+    ) -> anyhow::Result<Option<Vec<super::StorageEntry>>> {
         let mut entries = Vec::new();
-        let full_path = self.abs_path(path_in_provider);
-
-        if full_path.is_err() {
-            let e = full_path.unwrap_err();
-            log::error!("list_directory failed: {:?}", e);
-            // 路径解析失败
-            return None;
-        }
-
-        let full_path = full_path.unwrap();
+        let full_path = self.abs_path(path_in_provider).map_err(|e| {
+            e.context(format!(
+                "list_directory: Failed to resolve path '{}'",
+                path_in_provider
+            ))
+        })?;
         if !full_path.is_dir() {
             log::debug!("Path {} is not a directory", full_path.display());
-            return None;
+            return Ok(None);
         }
 
         if !full_path.exists() {
             log::debug!("Path {} does not exist", full_path.display());
-            return None;
+            return Ok(None);
         }
         log::debug!(
             "Listing directory {}/{}, full_path={}",
@@ -133,26 +135,20 @@ impl StorageProvider for LocalStorageProvider {
             path_in_provider,
             full_path.display()
         );
-        let dir_entries = fs::read_dir(full_path).await.inspect_err(|e| {
-            log::error!("Failed to read directory {}: {:?}", path_in_provider, e);
-        });
-        if dir_entries.is_err() {
-            return None;
-        }
+        let mut dir_entries = fs::read_dir(full_path)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to read directory {}: {}", path_in_provider, e))?;
 
-        if let Ok(mut dir_entries) = dir_entries {
-            while let Ok(Some(entry)) = dir_entries.next_entry().await {
-                let ent = self.process_entry(path_in_provider, &entry).await;
-                if ent.is_err() {
-                    log::info!(
-                        "Failed to process entry: {:?}, err: {:?}",
-                        entry.path(),
-                        ent
-                    );
-                    continue;
+        while let Some(entry) = dir_entries
+            .next_entry()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to read directory entry: {}", e))?
+        {
+            match self.process_entry(path_in_provider, &entry).await {
+                Ok(ent) => entries.push(ent),
+                Err(e) => {
+                    log::warn!("Failed to process entry {:?}: {}", entry.path(), e);
                 }
-                let ent = ent.unwrap();
-                entries.push(ent);
             }
         }
 
@@ -164,6 +160,6 @@ impl StorageProvider for LocalStorageProvider {
             path_in_provider,
             entries
         );
-        Some(entries)
+        Ok(Some(entries))
     }
 }

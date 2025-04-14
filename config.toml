@@ -1,6 +1,19 @@
 [storage]
-# 存储后端类型，目前支持local
-backend = "local"
+# 存储后端类型，支持local或nginx
+backend = "nginx"
+
+# 本地存储配置（当backend=local时必需）
+[storage.local]
+# 本地存储根目录
+root_path = "/tmp/test-mirror-proxy"
+
+# nginx存储配置（当backend=nginx时生效）
+[storage.nginx]
+# nginx服务器基础URL (例如: "http://nginx.example.com/files")
+base_url = "http://127.0.0.1:18080/"
+
+# 用于对外返回的url base (可以是公开域名)
+public_url = "http://127.0.0.1:18080/"
 
 [download_rules]
 # 需要特殊处理的文件后缀列表
@@ -12,10 +25,25 @@ extensions = [
     "rpm",
     "zip",
     "html",
-    "md"
+    "md",
+    "txt",
+    "json",
+    "xml",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "svg",
+    "mp4",
+    "avi",
+    "mkv",
+    "mov",
+    "wmv",
+    "flv",
+    "mpeg",
+    "mpg",
+    "m4v",
+    "webm",
+    "ogg",
+    "oga",
 ]
-
-# 本地存储配置（当backend=local时生效）
-[storage.local]
-# 本地存储根目录
-root_path = "/tmp/test-mirror-proxy"

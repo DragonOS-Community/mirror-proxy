@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  mirror-proxy-nginx-test-backend:
+    build: .
+    ports:
+      - "127.0.0.1:18080:80"
+    volumes:
+      - ./nginx-test.conf:/etc/nginx/conf.d/default.conf

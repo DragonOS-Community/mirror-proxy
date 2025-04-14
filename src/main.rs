@@ -23,7 +23,107 @@ mod storage;
 
 const BASE_PATH: &str = "/pub";
 
-#[get("/pub{path:.*}")]
+async fn handle_download_request(
+    path_str: &str,
+    req: &HttpRequest,
+) -> Result<HttpResponse, HttpError> {
+    let config = CONFIG.get().expect("Config not initialized");
+    if !has_matching_extension(path_str, &config.download_rules.extensions) {
+        return Err(HttpError::not_found("路径不存在", "请求的资源不存在"));
+    }
+
+    match select_provider(path_str) {
+        Some((provider, path_in_provider)) => {
+            if provider.is_local() {
+                log::debug!("Local storage provider selected, attempting to stream file (path in provider: {:?})", path_in_provider);
+                match provider.stream_file(&path_in_provider).await {
+                    Ok(Some(file)) => {
+                        return named_file_to_response(
+                            file,
+                            req.headers().get("range").and_then(|h| h.to_str().ok()),
+                            req,
+                        )
+                        .await
+                        .map_err(|_| HttpError::internal_error("服务器错误", "文件处理失败"));
+                    }
+                    Ok(None) => {
+                        return Err(HttpError::not_found("文件不存在", "请求的下载文件不存在"));
+                    }
+                    Err(e) => {
+                        log::error!("Failed to stream file: {}", e);
+                        return Err(HttpError::internal_error("服务器错误", "文件处理失败"));
+                    }
+                }
+            } else {
+                match provider.get_download_url(path_str).await {
+                    Ok(Some(download_url)) => {
+                        return Ok(HttpResponse::Found()
+                            .append_header((header::LOCATION, download_url))
+                            .finish());
+                    }
+                    Ok(None) => {
+                        return Err(HttpError::not_found("文件不存在", "请求的下载文件不存在"));
+                    }
+                    Err(e) => {
+                        log::error!("Failed to get download URL: {}", e);
+                        return Err(HttpError::internal_error("服务器错误", "获取下载链接失败"));
+                    }
+                }
+            }
+        }
+        None => Err(HttpError::not_found("路径不存在", "请求的资源不存在")),
+    }
+}
+
+async fn handle_directory_listing(
+    path_str: &str,
+    full_path: &PathBuf,
+) -> Result<HttpResponse, HttpError> {
+    let entries = match select_provider(path_str) {
+        Some((provider, path_in_provider)) => {
+            match provider.list_directory(&path_in_provider).await {
+                Ok(Some(entries)) => entries,
+                Ok(None) => return Err(HttpError::not_found("目录不存在", "请求的目录不存在")),
+                Err(e) => {
+                    if e.to_string().contains("Failed to connect to nginx") {
+                        log::error!("Nginx connection failed: {}", e);
+                        return Err(HttpError::internal_error(
+                            "服务器错误",
+                            "无法连接到存储服务",
+                        ));
+                    }
+                    log::error!("Failed to list directory: {}", e);
+                    return Err(HttpError::internal_error("服务器错误", "获取目录列表失败"));
+                }
+            }
+        }
+        None => return Err(HttpError::not_found("路径不存在", "请求的资源不存在")),
+    };
+
+    render::render_list(BASE_PATH, full_path.to_str().unwrap(), entries)
+        .map(|html| HttpResponse::Ok().content_type("text/html").body(html))
+        .map_err(|e| {
+            log::error!("渲染目录失败: {}", e);
+            HttpError::internal_error("服务器错误", "渲染目录时发生内部错误")
+        })
+}
+
+fn validate_path(full_path: &PathBuf) -> Result<&str, HttpError> {
+    if full_path
+        .components()
+        .any(|c| c == std::path::Component::ParentDir)
+    {
+        log::warn!("检测到非法路径访问尝试: {:?}", full_path);
+        return Err(HttpError::forbidden("访问被拒绝", "请求的路径无效"));
+    }
+
+    full_path.to_str().ok_or_else(|| {
+        log::warn!("检测到无效路径编码: {:?}", full_path);
+        HttpError::bad_request("无效请求", "请求路径无效")
+    })
+}
+
+#[get("/pub/{path:.*}")]
 async fn autoindex(req: HttpRequest, path: web::Path<String>) -> HttpResponse {
     let base_path = BASE_PATH.to_string();
     log::debug!("Base path: {:?}", base_path);
@@ -38,76 +138,24 @@ async fn autoindex(req: HttpRequest, path: web::Path<String>) -> HttpResponse {
         req_path = req_path.trim_start_matches('/').to_string();
     }
 
-    // 构造完整路径
     let full_path = PathBuf::from(format!("{}/{}", base_path, req_path));
     log::debug!("Full path: {:?}", full_path);
 
-    // 检查路径是否包含 `..`，防止跳出 `/pub` 目录
-    if full_path
-        .components()
-        .any(|c| c == std::path::Component::ParentDir)
-    {
-        return HttpError::forbidden("访问被拒绝", "路径中包含'..'，可能试图访问上级目录")
-            .to_http_response();
-    }
-
-    let path_str = match full_path.to_str() {
-        Some(s) => s,
-        None => {
-            return HttpError::bad_request("无效路径编码", "请求路径包含无效字符")
-                .to_http_response()
-        }
+    let path_str = match validate_path(&full_path) {
+        Ok(s) => s,
+        Err(e) => return e.to_http_response(),
     };
 
-    // 检查是否匹配下载规则
     let config = CONFIG.get().expect("Config not initialized");
     if has_matching_extension(path_str, &config.download_rules.extensions) {
-        match select_provider(path_str) {
-            Some((provider, path_in_provider)) => {
-                if provider.is_local() {
-                    log::debug!("Local storage provider selected, attempting to stream file (path in provider: {:?})", path_in_provider);
-                    if let Some(file) = provider.stream_file(&path_in_provider).await {
-                        return named_file_to_response(
-                            file,
-                            req.headers().get("range").and_then(|h| h.to_str().ok()),
-                            &req,
-                        )
-                        .await
-                        .unwrap_or_else(|_| {
-                            HttpError::internal_error("服务器错误", "文件处理失败")
-                                .to_http_response()
-                        });
-                    }
-                } else if let Some(download_url) = provider.get_download_url(path_str).await {
-                    return HttpResponse::Found()
-                        .append_header((header::LOCATION, download_url))
-                        .finish();
-                }
-                return HttpError::not_found("文件不存在", "请求的下载文件不存在")
-                    .to_http_response();
-            }
-            None => {
-                return HttpError::not_found("路径不存在", "请求的资源不存在").to_http_response()
-            }
+        match handle_download_request(path_str, &req).await {
+            Ok(resp) => resp,
+            Err(e) => e.to_http_response(),
         }
-    }
-
-    let entries = match select_provider(path_str) {
-        Some((provider, path_in_provider)) => provider.list_directory(&path_in_provider).await,
-        None => return HttpError::not_found("路径不存在", "请求的资源不存在").to_http_response(),
-    };
-
-    if entries.is_none() {
-        return HttpError::not_found("目录不存在", "请求的目录不存在").to_http_response();
-    }
-
-    let entries = entries.unwrap();
-
-    match render::render_list(BASE_PATH, full_path.to_str().unwrap(), entries) {
-        Ok(html) => HttpResponse::Ok().content_type("text/html").body(html),
-        Err(e) => {
-            log::error!("渲染目录失败: {}", e);
-            HttpError::internal_error("服务器错误", "渲染目录时发生内部错误").to_http_response()
+    } else {
+        match handle_directory_listing(path_str, &full_path).await {
+            Ok(resp) => resp,
+            Err(e) => e.to_http_response(),
         }
     }
 }
