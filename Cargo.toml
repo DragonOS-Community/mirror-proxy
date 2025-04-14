@@ -5,3 +5,12 @@ edition = "2021"
 authors = ["longjin <longjin@dragonos.org>"]
 
 [dependencies]
+actix-web = { version = "4.10.2", features = ["rustls"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
+askama = "0.13.0"
+async-trait = "0.1.88"
+chrono = "0.4.40"
+env_logger = "0.11.8"
+lazy_static = "1.5.0"
+log = "0.4.27"
+tokio = { version = "1.44.2", features = ["full"] }
