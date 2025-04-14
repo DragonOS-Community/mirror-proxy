@@ -50,7 +50,7 @@ async fn handle_download_request(
                         return Err(HttpError::not_found("文件不存在", "请求的下载文件不存在"));
                     }
                     Err(e) => {
-                        log::error!("Failed to stream file: {}", e);
+                        log::error!("文件流处理失败 - 路径: {}, 错误: {}", path_in_provider, e);
                         return Err(HttpError::internal_error("服务器错误", "文件处理失败"));
                     }
                 }
@@ -177,24 +177,31 @@ async fn named_file_to_response(
     // 设置强制下载的headers
     response.headers_mut().insert(
         header::CONTENT_TYPE,
-        "application/octet-stream".parse().unwrap(),
+        "application/octet-stream"
+            .parse()
+            .context("无效的CONTENT_TYPE header值")?,
     );
     response.headers_mut().insert(
         header::CONTENT_DISPOSITION,
         format!("attachment; filename=\"{}\"", name)
             .parse()
-            .unwrap(),
+            .context("无效的CONTENT_DISPOSITION header值")?,
     );
 
     // 保持原有的内容长度和断点续传支持
     response.headers_mut().insert(
         header::CONTENT_LENGTH,
-        metadata.len().to_string().parse().unwrap(),
+        metadata
+            .len()
+            .to_string()
+            .parse()
+            .context("无效的CONTENT_LENGTH header值")?,
     );
     if let Some(range) = range_header {
-        response
-            .headers_mut()
-            .insert(header::RANGE, range.to_string().parse().unwrap());
+        response.headers_mut().insert(
+            header::RANGE,
+            range.to_string().parse().context("无效的RANGE header值")?,
+        );
     }
 
     Ok(response)
