@@ -1,14 +1,22 @@
 use self::error::HttpError;
-use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer};
+use crate::config::{has_matching_extension, Config};
+use actix_files::NamedFile;
+use actix_web::{get, http::header, web, App, HttpRequest, HttpResponse, HttpServer};
+use anyhow::Context;
 use storage::select_provider;
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
-#[macro_use]
-extern crate anyhow;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate anyhow;
+
+static CONFIG: OnceLock<Config> = OnceLock::new();
+
+mod config;
 mod error;
 mod render;
 mod storage;
@@ -51,6 +59,39 @@ async fn autoindex(req: HttpRequest, path: web::Path<String>) -> HttpResponse {
         }
     };
 
+    // 检查是否匹配下载规则
+    let config = CONFIG.get().expect("Config not initialized");
+    if has_matching_extension(path_str, &config.download_rules.extensions) {
+        match select_provider(path_str) {
+            Some((provider, path_in_provider)) => {
+                if provider.is_local() {
+                    log::debug!("Local storage provider selected, attempting to stream file (path in provider: {:?})", path_in_provider);
+                    if let Some(file) = provider.stream_file(&path_in_provider).await {
+                        return named_file_to_response(
+                            file,
+                            req.headers().get("range").and_then(|h| h.to_str().ok()),
+                            &req,
+                        )
+                        .await
+                        .unwrap_or_else(|_| {
+                            HttpError::internal_error("服务器错误", "文件处理失败")
+                                .to_http_response()
+                        });
+                    }
+                } else if let Some(download_url) = provider.get_download_url(path_str).await {
+                    return HttpResponse::Found()
+                        .append_header((header::LOCATION, download_url))
+                        .finish();
+                }
+                return HttpError::not_found("文件不存在", "请求的下载文件不存在")
+                    .to_http_response();
+            }
+            None => {
+                return HttpError::not_found("路径不存在", "请求的资源不存在").to_http_response()
+            }
+        }
+    }
+
     let entries = match select_provider(path_str) {
         Some((provider, path_in_provider)) => provider.list_directory(&path_in_provider).await,
         None => return HttpError::not_found("路径不存在", "请求的资源不存在").to_http_response(),
@@ -71,8 +112,53 @@ async fn autoindex(req: HttpRequest, path: web::Path<String>) -> HttpResponse {
     }
 }
 
+async fn named_file_to_response(
+    file: NamedFile,
+    range_header: Option<&str>,
+    req: &HttpRequest,
+) -> anyhow::Result<HttpResponse> {
+    let metadata = file.file().metadata().context("无法获取文件元数据")?;
+    let name = file
+        .path()
+        .file_name()
+        .ok_or(anyhow!("文件名无效"))?
+        .to_string_lossy()
+        .into_owned();
+    let mut response = file.into_response(req);
+
+    // 设置强制下载的headers
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        "application/octet-stream".parse().unwrap(),
+    );
+    response.headers_mut().insert(
+        header::CONTENT_DISPOSITION,
+        format!("attachment; filename=\"{}\"", name)
+            .parse()
+            .unwrap(),
+    );
+
+    // 保持原有的内容长度和断点续传支持
+    response.headers_mut().insert(
+        header::CONTENT_LENGTH,
+        metadata.len().to_string().parse().unwrap(),
+    );
+    if let Some(range) = range_header {
+        response
+            .headers_mut()
+            .insert(header::RANGE, range.to_string().parse().unwrap());
+    }
+
+    Ok(response)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let config = config::load_config("config.toml")
+        .await
+        .expect("Failed to load config.toml");
+    CONFIG.set(config).expect("CONFIG already initialized");
+
     let mut builder = env_logger::Builder::from_default_env();
     if std::env::var_os("RUST_LOG").is_none() {
         builder.filter_level(log::LevelFilter::Info);

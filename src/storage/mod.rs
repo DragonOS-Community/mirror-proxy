@@ -1,15 +1,19 @@
-use std::{path::Path, sync::Arc, time::SystemTime};
-
-use async_trait::async_trait;
+use std::{sync::Arc, time::SystemTime};
 
 use crate::BASE_PATH;
+use actix_files::NamedFile;
+use async_trait::async_trait;
 
 pub mod local;
 
 lazy_static! {
-    static ref STORAGE_PROVIDER: Arc<dyn StorageProvider> = Arc::new(
-        local::LocalStorageProvider::new("./".into(), BASE_PATH.to_string())
-    );
+    static ref STORAGE_PROVIDER: Arc<dyn StorageProvider> = {
+        let config = crate::CONFIG.get().expect("Config not initialized");
+        Arc::new(local::LocalStorageProvider::new(
+            config.storage.local.as_ref().unwrap().root_path.clone(),
+            BASE_PATH.to_string(),
+        ))
+    };
 }
 
 #[async_trait]
@@ -17,6 +21,19 @@ pub trait StorageProvider: Sync + Send {
     async fn list_directory(&self, path_in_provider: &str) -> Option<Vec<StorageEntry>>;
     /// 根据完整的请求路径，返回在存储提供者中的路径
     fn path_in_provider(&self, full_path: &str) -> Option<String>;
+    /// 获取文件的下载URL（适用于特定后缀的文件）
+    async fn get_download_url(&self, full_path: &str) -> Option<String>;
+
+    /// 是否是本地存储
+    fn is_local(&self) -> bool {
+        false
+    }
+
+    /// 流式返回文件内容
+    #[allow(unused)]
+    async fn stream_file(&self, path_in_provider: &str) -> Option<NamedFile> {
+        None
+    }
 }
 
 #[derive(Debug, Clone)]

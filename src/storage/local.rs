@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use actix_files::NamedFile;
+use anyhow;
 use async_trait::async_trait;
 use tokio::fs;
 
@@ -32,14 +34,14 @@ impl LocalStorageProvider {
     ) -> anyhow::Result<super::StorageEntry> {
         let file_name = ent.file_name().to_string_lossy().to_string();
         let metadata = ent.metadata().await.map_err(|e| {
-            anyhow!(
+            anyhow::anyhow!(
                 "Failed to read metadata for file {}: {}",
                 self.ent_path_in_provider(path_in_provider, ent),
                 e
             )
         })?;
         let modified = metadata.modified().map_err(|e| {
-            anyhow!(
+            anyhow::anyhow!(
                 "Failed to get modified time for file {}: {}",
                 self.ent_path_in_provider(path_in_provider, ent),
                 e
@@ -63,8 +65,34 @@ impl LocalStorageProvider {
     }
 }
 
+impl LocalStorageProvider {
+    fn abs_path(&self, path_in_provider: &str) -> anyhow::Result<PathBuf> {
+        let full_path = format!("{}/{}", self.root_path, path_in_provider);
+        let full_path = PathBuf::from(&full_path).canonicalize().map_err(|e| {
+            anyhow!(
+                "Failed to canonicalize path {}, err: {}",
+                path_in_provider,
+                e
+            )
+        })?;
+        Ok(full_path)
+    }
+}
+
 #[async_trait]
 impl StorageProvider for LocalStorageProvider {
+    fn is_local(&self) -> bool {
+        true
+    }
+
+    async fn stream_file(&self, path_in_provider: &str) -> Option<NamedFile> {
+        let file_path = self.abs_path(path_in_provider).ok()?;
+        match NamedFile::open_async(file_path).await {
+            Ok(file) => Some(file),
+            Err(_) => None,
+        }
+    }
+
     fn path_in_provider(&self, full_path: &str) -> Option<String> {
         if full_path.starts_with(&self.req_path_prefix) {
             Some(full_path[self.req_path_prefix.len()..].to_string())
@@ -73,14 +101,22 @@ impl StorageProvider for LocalStorageProvider {
         }
     }
 
+    async fn get_download_url(&self, _full_path: &str) -> Option<String> {
+        // should not impl for local storage
+        None
+    }
+
     async fn list_directory(&self, path_in_provider: &str) -> Option<Vec<super::StorageEntry>> {
         let mut entries = Vec::new();
-        let full_path = format!("{}/{}", self.root_path, path_in_provider);
-        let full_path = PathBuf::from(&full_path).canonicalize();
+        let full_path = self.abs_path(path_in_provider);
+
         if full_path.is_err() {
+            let e = full_path.unwrap_err();
+            log::error!("list_directory failed: {:?}", e);
             // 路径解析失败
             return None;
         }
+
         let full_path = full_path.unwrap();
         if !full_path.is_dir() {
             log::debug!("Path {} is not a directory", full_path.display());

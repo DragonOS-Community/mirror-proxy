@@ -1,5 +1,4 @@
 use actix_web::HttpResponse;
-use anyhow::anyhow;
 use askama::Template;
 
 use crate::render::ErrorTemplate;
