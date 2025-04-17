@@ -207,6 +207,16 @@ async fn named_file_to_response(
     Ok(response)
 }
 
+#[get("/")]
+async fn index() -> Result<NamedFile, actix_web::Error> {
+    NamedFile::open_async("templates/index.html")
+        .await
+        .map_err(|e| {
+            log::error!("无法加载首页: {}", e);
+            actix_web::error::ErrorInternalServerError("无法加载首页")
+        })
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let config = config::load_config("config.toml")
@@ -221,6 +231,12 @@ async fn main() -> std::io::Result<()> {
     builder.init();
     HttpServer::new(|| {
         App::new()
+            .service(
+                actix_files::Files::new("/assets", "templates/assets")
+                    .show_files_listing()
+                    .use_last_modified(true),
+            )
+            .service(index)
             .service(autoindex)
             .default_service(web::route().to(|| async {
                 HttpError::not_found("页面不存在", "您访问的页面不存在，请检查URL是否正确")
