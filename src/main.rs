@@ -123,12 +123,15 @@ fn validate_path(full_path: &PathBuf) -> Result<&str, HttpError> {
     })
 }
 
-#[get("/pub/{path:.*}")]
+#[get("/pub{path:.*}")]
 async fn autoindex(req: HttpRequest, path: web::Path<String>) -> HttpResponse {
     let base_path = BASE_PATH.to_string();
     log::debug!("Base path: {:?}", base_path);
     log::debug!("Request path: {:?}", path);
     let mut req_path = path.into_inner();
+    if !req_path.is_empty() && !req_path.starts_with('/') {
+        return HttpError::not_found("路径不存在", "请求的资源不存在").to_http_response();
+    }
 
     if req_path.is_empty() {
         req_path = "/".to_string();

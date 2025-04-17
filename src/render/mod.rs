@@ -75,11 +75,12 @@ pub fn render_list(
     req_path: &str,
     src_entries: Vec<StorageEntry>,
 ) -> anyhow::Result<String> {
+    let base_path = base_path.trim_end_matches('/');
     let mut entries = Vec::new();
     entries.push(IndexDirEntry::parent_entry());
     src_entries.into_iter().for_each(|e| {
         let mut et: IndexDirEntry = e.into();
-        et.url = format!("{}/{}", base_path, et.url);
+        et.url = format!("{}/{}", base_path, et.url.trim_start_matches('/'));
         entries.push(et);
     });
 
