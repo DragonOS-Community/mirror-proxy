@@ -6,6 +6,8 @@ use reqwest::Url;
 use scraper::{Html, Selector};
 use url::Url as UrlParser;
 
+use crate::storage::utils::parse_file_size;
+
 use super::{StorageEntry, StorageProvider};
 
 pub struct NginxStorageProvider {
@@ -108,7 +110,7 @@ impl NginxStorageProvider {
                                     );
 
                             // 尝试解析文件大小
-                            let size = parts[3].parse::<usize>().ok();
+                            let size = parse_file_size(parts[3]);
 
                             (modified, size)
                         } else {

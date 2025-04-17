@@ -29,6 +29,17 @@ pub struct IndexDirEntry {
     pub size: String,
 }
 
+impl IndexDirEntry {
+    fn parent_entry() -> IndexDirEntry {
+        Self {
+            name: "../".to_string(),
+            url: "../".to_string(),
+            modified: "".to_string(),
+            size: "".to_string(),
+        }
+    }
+}
+
 impl From<StorageEntry> for IndexDirEntry {
     fn from(entry: StorageEntry) -> Self {
         Self {
@@ -62,16 +73,15 @@ fn format_size(size: Option<usize>) -> String {
 pub fn render_list(
     base_path: &str,
     req_path: &str,
-    entries: Vec<StorageEntry>,
+    src_entries: Vec<StorageEntry>,
 ) -> anyhow::Result<String> {
-    let entries: Vec<IndexDirEntry> = entries
-        .into_iter()
-        .map(|e| {
-            let mut et: IndexDirEntry = e.into();
-            et.url = format!("{}/{}", base_path, et.url);
-            et
-        })
-        .collect();
+    let mut entries = Vec::new();
+    entries.push(IndexDirEntry::parent_entry());
+    src_entries.into_iter().for_each(|e| {
+        let mut et: IndexDirEntry = e.into();
+        et.url = format!("{}/{}", base_path, et.url);
+        entries.push(et);
+    });
 
     let template = AutoIndexTemplate {
         path: req_path.to_string(),

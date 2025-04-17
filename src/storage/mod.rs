@@ -6,6 +6,7 @@ use async_trait::async_trait;
 
 pub mod local;
 pub mod nginx;
+mod utils;
 
 lazy_static! {
     static ref STORAGE_PROVIDER: Arc<dyn StorageProvider> = {
