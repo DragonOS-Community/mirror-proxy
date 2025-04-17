@@ -1,7 +1,6 @@
 /* DragonOS镜像站首页样式 */
 #wrapper {
   margin: 0 5%;
-  padding: 0 1rem;
   overflow-x: hidden;
   position: relative;
   width: 90%;
@@ -542,6 +541,18 @@ footer::before {
   justify-content: center;
   gap: 3rem;
   margin: 2rem 0;
+}
+
+@media screen and (max-width: 768px) {
+  .download-info {
+    flex-direction:column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .download-item {
+    width: 90% !important;
+    max-width: 320px;
+  }
 }
 
 .download-item {
