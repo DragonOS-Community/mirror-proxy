@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  mirror-proxy:
+    build: .
+    ports:
+      - "127.0.0.1:28080:8080"
+    volumes:
+      - ./config.toml:/etc/mirror-proxy/config.toml
+    restart: unless-stopped
