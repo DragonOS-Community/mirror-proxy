@@ -1,6 +1,7 @@
 use std::time::SystemTime;
 
 use async_trait::async_trait;
+use chrono::{TimeZone, Utc};
 use reqwest::Url;
 use scraper::{Html, Selector};
 use url::Url as UrlParser;
@@ -65,10 +66,23 @@ impl NginxStorageProvider {
 
     fn parse_entries(&self, html: &str, path: &str) -> anyhow::Result<Vec<StorageEntry>> {
         let document = Html::parse_document(html);
-        let selector = Selector::parse("a").unwrap();
+        let link_selector =
+            Selector::parse("a").map_err(|e| anyhow::anyhow!("Invalid selector: 'a': {}", e))?;
+        let pre_selector = Selector::parse("pre")
+            .map_err(|e| anyhow::anyhow!("Invalid selector: 'pre': {}", e))?;
         let mut entries = Vec::new();
 
-        for element in document.select(&selector) {
+        // 获取pre元素中的文本内容
+        let pre_text = document
+            .select(&pre_selector)
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No pre element found in nginx autoindex"))?
+            .text()
+            .collect::<String>();
+        // 按行分割pre文本
+        let lines: Vec<&str> = pre_text.split('\n').collect();
+
+        for element in document.select(&link_selector) {
             if let Some(href) = element.value().attr("href") {
                 if href == "../" {
                     continue;
@@ -76,11 +90,45 @@ impl NginxStorageProvider {
 
                 let name = element.text().collect::<String>();
                 let url = format!("{}/{}", path.trim_end_matches('/'), href);
+
+                // 查找对应的行来获取日期和大小
+                let (modified, size) = lines
+                    .iter()
+                    .find(|line| line.contains(&name))
+                    .map(|line| {
+                        let parts: Vec<&str> = line.split_whitespace().collect();
+                        if parts.len() >= 4 {
+                            // 尝试解析日期和时间
+                            let date_time = format!("{} {}", parts[1], parts[2]);
+                            let modified =
+                                chrono::NaiveDateTime::parse_from_str(&date_time, "%d-%b-%Y %H:%M")
+                                    .unwrap_or(
+                                        chrono::DateTime::<chrono::Utc>::from(SystemTime::now())
+                                            .naive_utc(),
+                                    );
+
+                            // 尝试解析文件大小
+                            let size = parts[3].parse::<usize>().ok();
+
+                            (modified, size)
+                        } else {
+                            (
+                                chrono::DateTime::<chrono::Utc>::from(SystemTime::now())
+                                    .naive_utc(),
+                                None,
+                            )
+                        }
+                    })
+                    .unwrap_or((
+                        chrono::DateTime::<chrono::Utc>::from(SystemTime::now()).naive_utc(),
+                        None,
+                    ));
+                let modified: SystemTime = SystemTime::from(Utc.from_utc_datetime(&modified));
                 let entry = StorageEntry {
                     name,
                     url,
-                    modified: SystemTime::now(), // nginx autoindex doesn't provide modified time
-                    size: None,                  // nginx autoindex doesn't provide file size
+                    modified,
+                    size,
                 };
                 entries.push(entry);
             }

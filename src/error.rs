@@ -52,6 +52,7 @@ impl HttpError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn status_code(&self) -> u16 {
         match self {
             Self::Forbidden { .. } => 403,
@@ -133,5 +134,3 @@ impl HttpError {
         }
     }
 }
-
-pub type Result<T> = std::result::Result<T, HttpError>;
