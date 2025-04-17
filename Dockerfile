@@ -4,6 +4,24 @@ FROM rust:1.84 as builder
 # 创建工作目录
 WORKDIR /usr/src/mirror-proxy
 
+# 配置 cargo 使用 rsproxy 镜像
+RUN mkdir -p /usr/local/cargo/ && \
+    echo '[source.crates-io]\n\
+replace-with = "rsproxy-sparse"\n\
+\n\
+[source.rsproxy]\n\
+registry = "https://rsproxy.cn/crates.io-index"\n\
+\n\
+[source.rsproxy-sparse]\n\
+registry = "sparse+https://rsproxy.cn/index/"\n\
+\n\
+[registries.rsproxy]\n\
+index = "https://rsproxy.cn/crates.io-index"\n\
+\n\
+[net]\n\
+git-fetch-with-cli = true' > /usr/local/cargo/config.toml
+
+
 # 复制项目文件
 COPY . .
 
