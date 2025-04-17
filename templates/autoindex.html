@@ -2,17 +2,13 @@
 <html>
 <head>
     <title>Index of {{ path }}</title>
-    <style>
-        body { font-family: sans-serif; }
-        a { text-decoration: none; color: #0366d6; }
-        a:hover { text-decoration: underline; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-    </style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="/assets/css/main.css" />
 </head>
 <body>
     <h1>Index of {{ path }}</h1>
-    <table>
+    <table class="file-table">
         <thead>
             <tr>
                 <th>Name</th>
@@ -30,5 +26,25 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Footer -->
+    <footer id="footer">
+        <p class="copyright">
+            联系我们：contact@dragonos.org
+            <br />
+            <a href="https://github.com/DragonOS-Community/mirror-proxy", target="_blank">
+                完善此页面
+            </a>
+        </p>
+        <p class="copyright" style="margin-top: 0">
+            ©2022-2025 DragonOS Community
+            <br />
+            All rights reserved.
+        </p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/assets/js/jquery.min.js"></script>
+    <!-- <script src="/assets/js/main.js"></script> -->
 </body>
 </html>

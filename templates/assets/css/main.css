@@ -4,21 +4,21 @@
   padding: 0 1rem;
   overflow-x: hidden;
   position: relative;
-  width:90%;
+  width: 90%;
   max-width: 90%;
 }
 
 :root {
-  --dragon-light-blue: #4da6ff;  /* 亮蓝 */
-  --dragon-dark-blue: #1a56db;   /* 深蓝 */
-  --dragon-purple: #db34d3;      /* 粉紫 */
+  --dragon-light-blue: #4da6ff; /* 亮蓝 */
+  --dragon-dark-blue: #1a56db; /* 深蓝 */
+  --dragon-purple: #db34d3; /* 粉紫 */
   --dragon-dark: #111827;
   --dragon-light: #f3f4f6;
 }
 
 body {
   background: linear-gradient(135deg, var(--dragon-light) 0%, #e5e7eb 100%);
-  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   margin: 0;
   padding: 2rem;
   color: var(--dragon-dark);
@@ -46,7 +46,6 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-
 /* 为导航栏链接添加更多悬停效果 */
 #nav ul li a:hover {
   background-color: #e0e0e0;
@@ -56,8 +55,13 @@ body {
 }
 
 #header {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%), 
-              url('https://dragonos.org/wp-content/uploads/2023/03/图形中英文完整@0.5x-1024x275.png') no-repeat center center/cover;
+  background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.7) 100%
+    ),
+    url("https://dragonos.org/wp-content/uploads/2023/03/图形中英文完整@0.5x-1024x275.png")
+      no-repeat center center/cover;
   padding: 6rem 0;
   text-align: center;
   animation: fadeIn 1s ease-in-out;
@@ -67,7 +71,7 @@ body {
 }
 
 #header::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -140,7 +144,6 @@ body {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-
 }
 
 #nav ul {
@@ -173,13 +176,17 @@ body {
 }
 
 #nav ul li a::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    90deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
   transition: width 0.3s ease;
 }
 
@@ -239,7 +246,11 @@ body {
 }
 
 .spotlight .content .actions .button {
-  background: linear-gradient(45deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    45deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
   color: #fff;
   padding: 0.75rem 1.5rem;
   border: none;
@@ -263,13 +274,18 @@ body {
 }
 
 .spotlight .content .actions .button::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
   transform: translateX(-100%);
   transition: transform 0.6s ease;
 }
@@ -312,7 +328,7 @@ body {
 }
 
 .main.special ul.features li {
-  flex: 1 1 200px;
+  flex: 1 1;
   text-align: center;
 }
 
@@ -337,6 +353,10 @@ body {
   text-decoration: underline;
 }
 
+.main.special ul.actions {
+  padding-inline-start: 0;
+}
+
 #cta {
   background: rgba(255, 255, 255, 0.95);
   padding: 3rem 2rem;
@@ -352,13 +372,17 @@ body {
 }
 
 #cta::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    90deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
 }
 
 #cta h2 {
@@ -385,7 +409,11 @@ body {
 }
 
 #cta .actions .button {
-  background: linear-gradient(45deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    45deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
   color: #fff;
   padding: 1rem 2rem;
   border: none;
@@ -435,18 +463,26 @@ footer .copyright a:hover {
 }
 
 footer::before {
-  content: '';
+  content: "";
   display: block;
   width: 100px;
   height: 2px;
-  background: linear-gradient(90deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    90deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
   margin: 0 auto 1.5rem;
   border-radius: 2px;
 }
 
 /* 立即加入我们按钮样式 - 与前往赞助按钮一致 */
 .cta-button {
-  background: linear-gradient(45deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    45deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
   color: #fff;
   padding: 1rem 2rem;
   border: none;
@@ -466,7 +502,11 @@ footer::before {
 
 /* 立即加入我们按钮特殊样式 */
 .button.join-button {
-  background: linear-gradient(45deg, var(--dragon-purple), var(--dragon-dark-blue));
+  background: linear-gradient(
+    45deg,
+    var(--dragon-purple),
+    var(--dragon-dark-blue)
+  );
   font-size: 1.1rem;
   padding: 0.8rem 2rem;
   border-radius: 8px;
@@ -484,6 +524,12 @@ footer::before {
 
 .button.join-button:active {
   transform: translateY(0);
+}
+
+/* 移除按钮文字下划线 */
+.button,
+.cta-button {
+  text-decoration: none !important;
 }
 
 /* 资源中心卡片样式 */
@@ -512,13 +558,17 @@ footer::before {
 }
 
 .download-item::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 6px;
-  background: linear-gradient(90deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    90deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
 }
 
 .download-item:hover {
@@ -566,8 +616,53 @@ footer::before {
 
 .download-item a:hover {
   color: white;
-  background: linear-gradient(45deg, var(--dragon-dark-blue), var(--dragon-purple));
+  background: linear-gradient(
+    45deg,
+    var(--dragon-dark-blue),
+    var(--dragon-purple)
+  );
   text-decoration: none;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(26, 86, 219, 0.2);
+}
+
+/* 文件列表表格样式 */
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 2rem 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.file-table th {
+  background: linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--dragon-dark-blue) 80%, transparent),
+    color-mix(in srgb, var(--dragon-purple) 80%, transparent)
+  );
+  color: rgb(255, 255, 255);
+  padding: 1rem;
+  text-align: left;
+}
+
+.file-table td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.file-table tr:last-child td {
+  border-bottom: none;
+}
+
+.file-table a {
+  color: var(--dragon-dark-blue);
+  transition: color 0.2s ease;
+}
+
+.file-table a:hover {
+  color: var(--dragon-purple);
+  text-decoration: none;
 }
